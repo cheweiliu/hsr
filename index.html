@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>高鐵選址公民評估工具</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { font-family: "Microsoft JhengHei", sans-serif; margin: 0; display: flex; height: 100vh; }
+        #sidebar { width: 350px; padding: 20px; background: #f8f9fa; border-right: 1px solid #dee2e6; overflow-y: auto; }
+        #map { flex-grow: 1; }
+        .slider-group { margin-bottom: 25px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .result-card { background: white; padding: 15px; margin-top: 10px; border-radius: 8px; border-left: 6px solid #007bff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h2 { color: #343a40; font-size: 1.5rem; }
+        input[type=range] { width: 100%; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div id="sidebar">
+    <h2>🚄 高鐵選址模擬器</h2>
+    <p>調整你的價值偏好：</p>
+    
+    <div class="slider-group">
+        <label>🍀 環境保護權重: <span id="env-val">50</span>%</label>
+        <input type="range" id="env-weight" min="0" max="100" value="50">
+        <small style="color: #666;">重視農地保留、避開敏感區</small>
+    </div>
+
+    <div class="slider-group">
+        <label>🏙️ 開發效率權重: <span id="pop-val">50</span>%</label>
+        <input type="range" id="pop-weight" min="0" max="100" value="50">
+        <small style="color: #666;">重視服務人口、交通節省時間</small>
+    </div>
+
+    <hr>
+    <h3>📊 評估排名</h3>
+    <div id="results"></div>
+</div>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    const map = L.map('map').setView([22.65, 120.50], 11);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    // 模擬選址資料 (這就是未來 NGO 可以填入真實數據的地方)
+    const sites = [
+        { name: "六塊厝案", lat: 22.678, lng: 120.468, envScore: 40, popScore: 80, desc: "距離市區近，但需徵收部分農地。" },
+        { name: "屏東市區案", lat: 22.669, lng: 120.486, envScore: 15, popScore: 98, desc: "人口服務力最強，但施工拆遷成本極高。" },
+        { name: "潮州方案", lat: 22.550, lng: 120.540, envScore: 75, popScore: 55, desc: "環境衝擊較小，但距離人口稠密區較遠。" }
+    ];
+
+    sites.forEach(site => {
+        L.marker([site.lat, site.lng]).addTo(map).bindPopup(`<b>${site.name}</b><br>${site.desc}`);
+    });
+
+    function update() {
+        const envW = document.getElementById('env-weight').value;
+        const popW = document.getElementById('pop-weight').value;
+        document.getElementById('env-val').innerText = envW;
+        document.getElementById('pop-val').innerText = popW;
+
+        const totalW = parseInt(envW) + parseInt(popW);
+        
+        let html = '';
+        const sorted = sites.map(s => {
+            // 計算加權得分
+            const score = ((s.envScore * envW) + (s.popScore * popW)) / (totalW || 1);
+            return { ...s, score };
+        }).sort((a, b) => b.score - a.score);
+
+        sorted.forEach((s, index) => {
+            const color = index === 0 ? "#28a745" : "#007bff";
+            html += `<div class="result-card" style="border-left-color: ${color}">
+                <strong>第 ${index + 1} 名：${s.name}</strong><br>
+                綜合推薦分：${s.score.toFixed(1)}
+            </div>`;
+        });
+        document.getElementById('results').innerHTML = html;
+    }
+
+    document.getElementById('env-weight').addEventListener('input', update);
+    document.getElementById('pop-weight').addEventListener('input', update);
+    update();
+</script>
+
+</body>
+</html>
